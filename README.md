@@ -68,6 +68,7 @@ Berikut adalah hasil evaluasi sistem dan AI Qwen 2B terhadap 5 layanan keamanan 
 
 ## Benchmark & Reduksi Alert
 Penerapan *soc_classifier* menggunakan Qwen 2B memberikan efisiensi yang masif terhadap lingkungan pemantauan. Berikut adalah hasil *benchmark* dari implementasi tersebut:
+
 **1. Before**
 <img width="1913" height="448" alt="Before-Benchmark" src="https://github.com/user-attachments/assets/fc91e224-acb3-46c5-a1b0-9c1e24c1908f" />
 **2. After**
