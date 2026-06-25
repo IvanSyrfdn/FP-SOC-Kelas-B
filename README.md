@@ -1,7 +1,9 @@
 # Laporan Final Project SOC Kelas B
 
 **Mata Kuliah:** Security Operations Center
+
 **Kelompok:** 1 (Satu)
+
 **Program Studi:** Teknologi Informasi, Institut Teknologi Sepuluh Nopember
 
 ## Anggota Kelompok
@@ -66,6 +68,10 @@ Berikut adalah hasil evaluasi sistem dan AI Qwen 2B terhadap 5 layanan keamanan 
 
 ## Benchmark & Reduksi Alert
 Penerapan *soc_classifier* menggunakan Qwen 2B memberikan efisiensi yang masif terhadap lingkungan pemantauan. Berikut adalah hasil *benchmark* dari implementasi tersebut:
+**1. Before**
+<img width="1913" height="448" alt="Before-Benchmark" src="https://github.com/user-attachments/assets/fc91e224-acb3-46c5-a1b0-9c1e24c1908f" />
+**2. After**
+<img width="1507" height="335" alt="After-Benchmark" src="https://github.com/user-attachments/assets/fdff7f9f-995f-473e-9bf2-d0b069d17ab0" />
 
 * **Total Alerts Sebelum AI:** 12.211 alerts
 * **Total Alerts Sesudah AI:** 3.190 alerts
