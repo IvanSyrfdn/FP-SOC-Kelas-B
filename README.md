@@ -79,5 +79,19 @@ Penerapan *soc_classifier* menggunakan Qwen 2B memberikan efisiensi yang masif t
 * **Total Alerts yang Direduksi:** 9.021 alerts
 
 **Persentase Reduksi:**
-Sistem berhasil mengurangi *noise* peringatan sebesar **~73.88%**. Penurunan drastis ini mengoptimalkan beban kerja tim *Security Operations*, memastikan bahwa investigasi dan triase hanya difokuskan pada sisa ±26% peringatan yang telah tersaring oleh kecerdasan buatan.
+Sistem berhasil mengurangi *noise* peringatan sebesar **73.88%**. Penurunan drastis ini mengoptimalkan beban kerja tim *Security Operations*, memastikan bahwa investigasi dan triase hanya difokuskan pada sisa 26.12% peringatan yang telah tersaring oleh kecerdasan buatan.
 
+## Kendala dan Solusi
+Dalam proses pengerjaan proyek ini, kami mengalami kendala teknis terkait implementasi sistem *Security Orchestration, Automation, and Response* (SOAR). Ketentuan penugasan mengarahkan penggunaan **Shuffle** sebagai alat orkestra keamanan. Namun, kami sempat mencoba mengeksplorasi layanan SOAR berbasis *cloud* dari **Microsoft Azure**. Kendala utama muncul pada tahap otorisasi, dimana akun Azure *Education* memiliki batasan *privilege* terhadap penggunaan layanan keamanan tingkat lanjut dan memerlukan eskalasi izin dari administrator pusat. 
+
+Sebagai solusi atas keterbatasan akses tersebut, kami memutuskan untuk mengimplementasikan fungsionalitas SOAR sebagai sebuah layanan (*service*) yang berjalan langsung di dalam *Virtual Machine* (VM). Pendekatan ini kami pilih untuk menggantikan ketergantungan pada platform *end-to-end* eksternal maupun Shuffle, serta karena permasalahan izin administrasi yang sudah disebutkan sebelumnya. Dengan menjalankan SOAR sebagai *service* internal, proses orkestrasi keamanan, penanganan *alert*, dan klasifikasi ancaman oleh AI tetap dapat tereksekusi secara mulus dan terpusat di dalam infrastruktur lokal yang telah dibangun.
+
+## Saran dan Pengembangan
+Untuk penyempurnaan sistem pemantauan keamanan ini di masa mendatang, terdapat beberapa aspek krusial yang dapat diekspansi:
+1. **Implementasi Shuffle SOAR:** Mengadopsi platform Shuffle secara penuh sesuai dengan ketentuan awal proyek. Penggunaan Shuffle akan memberikan fleksibilitas dalam menyusun *playbook* penanganan insiden tanpa terikat oleh restriksi lisensi akun edukasi seperti pada layanan *cloud* komersial.
+2. **Peningkatan Kapabilitas AI:** Mengembangkan fungsionalitas model AI Qwen 2B agar tidak terbatas pada klasifikasi *false alarm*. AI diharapkan dapat diintegrasikan dengan modul respons untuk mengambil tindakan aktif atau eksekusi otonom, seperti memberikan perintah dan atau pilihan blokir (*block*) terhadap IP penyerang di level *firewall*, melakukan karantina file, atau mengisolasi *host* yang terkompromi.
+
+## Kesimpulan
+Implementasi *Security Operations Center* (SOC) menggunakan arsitektur *Virtual Machine* terisolasi pada Digital Ocean telah berhasil membangun lingkungan pemantauan keamanan jaringan yang proaktif. Sistem ini terbukti mampu mendeteksi secara *real-time* lima vektor ancaman utama: anomali jaringan (Suricata IDS), *malware*, eksploitasi Shellshock, SQL *Injection*, serta serangan *phishing*.
+
+Inovasi utama dalam proyek ini adalah integrasi kecerdasan buatan (Qwen 2B) sebagai analis lapis pertama. Penerapan klasifikasi ambang batas tingkat keparahan (*severity threshold*) dan analisis konteks ancaman secara cerdas berhasil memitigasi fenomena *alert fatigue*. AI terbukti sukses mereduksi volume peringatan keamanan positif palsu (*false alarm*) secara drastis hingga **73,88%** (dari 12.211 menjadi 3.190 peringatan). Secara keseluruhan, proyek ini tidak hanya memvalidasi efektivitas deteksi sistem keamanan, tetapi juga mendemonstrasikan efisiensi operasional yang esensial bagi analis keamanan siber.
