@@ -63,8 +63,101 @@ Berikut adalah hasil evaluasi sistem dan AI Qwen 2B terhadap 5 layanan keamanan 
 > **Penjelasan:** Log mencatat `SQL injection attempt.` (Rule ID `31103`) dengan tingkat keparahan menengah (`rule_level: 7`). AI menganalisis konteks serangan ini dan memberikan *reasoning* bahwa tidak terdapat jejak anomali lebih lanjut (seperti keberhasilan injeksi, eksfiltrasi data, atau eskalasi hak istimewa pengguna). Oleh karena itu, AI secara cerdas menyaring peringatan ini sebagai `FALSE_ALARM`.
 
 **5. Phishing**
-<img width="1461" height="527" alt="Phising-Alerts" src="https://github.com/user-attachments/assets/14e7bcaa-a18e-4990-b668-b0219dda37ee" />
+<img width="1461" height="527" alt="wazuh-phisings" src="https://github.com/user-attachments/assets/14e7bcaa-a18e-4990-b668-b0219dda37ee" />
 > **Penjelasan:** Peringatan `Phishing email detected by automated scanner.` (Rule ID `100207`) memiliki tingkat keparahan tinggi (`rule_level: 12`). Meski memicu alert tinggi, evaluasi AI Qwen 2B menyatakan bahwa ini adalah `FALSE_ALARM`. Alasannya adalah log tersebut tidak berkolerasi dengan aktivitas mencurigakan lainnya di dalam *host*, seperti eksekusi *malware*, percobaan *brute-force*, atau kompromi akun yang biasanya mengikuti sebuah serangan *phishing*.
+
+## SOAR Service (Python Script)
+
+Untuk menjalankan AI dan Phising Detection Alertnya, kami menggunakan 2 custom-build service yang kami jalankan, yaitu `soc-classifier.service` dan `wazuh-phising.service`. 
+
+### soc-classifier.service
+
+Service ini digunakan untuk menjalankan script python yang kami gunakan untuk mendeteksi false positive dan non false positive, berikut adalah isi dari file ini
+
+```bash
+[Unit]
+Description=SOC False Alarm Classifier
+After=network.target wazuh-manager.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /var/ossec/integrations/false_alarm_classifier.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Service ini berfungsi untuk menjalankan script python AI kami di background selayaknya sebuah file service biasa yang terus berjalan. File ini berfungsi agar log dari file `alerts.json` dari SIEM diambil dan diberikan kepada model AI secara live dan AI memberikan **verdict** sesuai dengan konteks yang diberikan secara streaming langsung.
+
+File ini yang membuat parameter benchmark kami dapat terlihat dalam 2 jenis dashboard yang berbeda. Selain pada **index pattern** default yang ada dalam Wazuh, kami juga membuat sebuah **index pattern custom** yang memuat semua alert yang sama dengan index pattern default, yaitu `wazuh-alerts-*` dan memasukkannya ke dalam index pattern yang kami buat secara custom bernama `filebeat-*`. Fungsi index pattern custom ini adalah untuk memberikan gambaran baru mengenai alerts yang sudah difilter oleh AI kami.
+
+Tampilan index pattern default:
+
+![Dashboard-1](./Assets/Dashboard-1.png)
+
+Dalam index pattern ini, hanya diperlihatkan data-data raw yang belum dicerna oleh AI. Sedangkan, index pattern baru kami dapat memperlihatkan data-data yang sudah diproses lewat AI:
+
+Tampilan index pattern custom:
+
+![Dashboard-2](./Assets/Dashboard-2.png)
+
+Singkatnya, kami mengambil data raw dari dashboard pertama (index pattern default) dan memberikannya ke AI untuk diproses. Setelah AI kami selesai memproses data rawnya, maka data processed akan dimasukkan ke dalam index pattern custom dengan variabel yang telah dibuat untuk mendeteksi adanya sebuah false positive.
+
+### wazuh-phising.service
+
+Seperti pada namanya, service ini digunakan untuk memfilter email yang didapatkan dari email yang bersangkutan. Disini saya menggunakan email pribadi saya sendiri yaitu `theodorusaaron31@gmail.com`. Setiap email yang masuk ke dalam email pribadi saya akan masuk ke dalam sebuah file log bernama `data-email.log` dan service akan menjalankan sebuah script python untuk mengecek tiap-tiap log yang masuk dan menentukan apabila itu adalah sebuah serangan phising atau tidak.
+
+isi dari service ini adalah seperti berikut:
+
+```bash
+[Unit]
+Description=Wazuh Automated Email Phishing Detector Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/root/wazuh-phishing/venv/bin/python3 /root/wazuh-phishing/email_phishing_detector.py
+Restart=always
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=wazuh-phishing
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Pada kode tersebut, kami menjalankan sebuah script pythin yang berisikan sebuah AI untuk mengecek log email dan menentukan apakah email tersebut termasuk phising atau tidak.
+
+Untuk mengetahui apakah email tersebut adaalah sebuah phising, kami menyetel AI kami untuk mengecek tiap-tiap bagian dari semua email seperti berikut:
+1. Sender: Siapa yang mengirimkan email ini, apakah email official atau bukan. Jika ya, maka akan otomatis dicatat sebagai `Clean Email`. Jika tidak, maka akan lanjut dengan pengecekan Header Emailnya.
+2. Header: Apa subject yang diinginkan oleh sender untuk receiver lakukan. Disini kami membuat sebuah library kata yang sangat awam digunakan dalam email phising, seperti `urgent`, `hacked`, `alert`, dan sebagainya. Semakin banyak kata ini, maka semakin tinggi **confidence score** AI untuk menentukan ini adalah sebuah phising.
+3. Body: AI akan melihat apa saja isi konten dari email yang dikirim, apakah ada sebuah link URL, atau sebuah dokumen. Jika terdapat sebuah URL dalam email tersebut, maka akan mengaktifkan library python `beautiful soup` untuk mengakses dan menscraping dari URL tersebut dan memberikan hasil berupa file html ke AI.
+4. Document: Jika terdapat sebuah dokumen dalam email tersebut, maka akan dilakukan pengecekan jenis file terlebih dahulu. AI kami untuk saat ini hanya akan mengecek file bertipe **excutabl** atau `.exe` agar langusng di reverse engineer dan ditentukan apakah itu malware atau tidak.
+
+Contoh Email Phising rekayasa yang dikirimkan:
+
+![Phising-1](./Assets/Phising-1.png)
+
+> *Notes: Email ini bersifat palsu dan hanya sekedar rekayasa!
+
+Dan ini adalah alerts yang masuk ke dalam file lognya:
+
+![Phising-2](./Assets/Phising-2.png)
+
+Dapat dilihat bahwa terdapat 2 jenis reasoning yang muncul, yaitu terdapat keyword yang menandakan sebuah alert phising (meningkatkan confidence score) yang sudah disebutkan sebelumnya untuk pengecekan header email dan alert **Insecure HTTP URL**, yaitu alert yang muncul dikarenakan sebuah URL yang dicantumkan masuk ke dalam email berupa UTL yang tidak secure (HTTP). Jadi meskipun sender nya valid (Email resmi antasena ITS), AI masih akan tetap mengecel email tersebut secara keseluruhan.
+
+Tampilan jika outputnya `Clean Email`:
+
+![Phising-3](./Assets/Phising-3.png)
+
+Dalam email clean tersebut, AI mendeteksi sender yang valid (Medium.com), header yang hanya berupa sebuah notifikasi sebuah headline news baru di Medium, dan tidak ada konten yang dicantumkan selain teks, jadi sangat kecil kemungkinan phising dari email ini dan akhirnya dilabeli sebagai `Clean Email`.
 
 ## Benchmark & Reduksi Alert
 Penerapan *soc_classifier* menggunakan Qwen 2B memberikan efisiensi yang masif terhadap lingkungan pemantauan. Berikut adalah hasil *benchmark* dari implementasi tersebut:
